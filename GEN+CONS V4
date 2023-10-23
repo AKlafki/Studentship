@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Chemical Reaction Simulation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <style>
+    #resetButton {
+      background-color: rgb(78, 154, 166);
+      color: white;
+      border: none;
+      < !-- padding: 10px 20px;
+      -->text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+    }
+  </style>
+  <h1> Simulation of the irreversible reaction A + B → C </h1>
+  <p><strong>Please select the initial number of molecules A and B using the sliders.</strong><br><strong>Then watch 
+    the progress of the reaction! Explain what you see.</strong> 
+    <br><strong>Click the button to Reset the simulation</strong></p>
+
+</head>
+
+<body>
+  <div><p id = 'nTval'>0</p></div>
+  <div><p id = 'xaval'>0</p></div>
+  <div><p id = 'xbval'>0</p></div>
+  <div><p id = 'xcval'>0</p></div>
+  <div>
+    <label for="so2Slider">Initial number of A molecules:</label>
+    <input type="range" id="so2Slider" min="0" max="20" value="10">
+    <span id="so2Count">5</span>
+  </div>
+  <div>
+    <label for="o2Slider">Initial number of B molecules:</label>
+    <input type="range" id="o2Slider" min="0" max="20" value="10">
+    <span id="o2Count">5</span>
+  </div><br>
+  <label> <input type='checkbox' id='rxn_1'> A + B → C </label>
+  <label> <input type='checkbox' id='rxn_2'> A + B → 2C </label>
+  <div><button id="resetButton">Reset</button></div>
+  
+  
+  <script>
+    let so2Count = 10;
+    let o2Count = 10;
+    let so3Count = 0;
+    let so2Count1 = so2Count;
+    let o2Count1 = o2Count;
+    let so3Count1 = so3Count;
+    let molecules = [];
+    let startTime = 0;
+    let timer = 0;
+    let nT = 0;
+    let xa = 0;
+    let xb = 0;
+    let xc = 0;
+
+    const nTval = document.getElementById('nTval');
+    nTval.style.position = 'absolute';
+    nTval.style.top = '121px';
+    nTval.style.left = '540px';
+
+    const xaval = document.getElementById('xaval');
+    xaval.style.position = 'absolute';
+    xaval.style.top = '141px';
+    xaval.style.left = '540px';
+
+    const xbval = document.getElementById('xbval');
+    xbval.style.position = 'absolute';
+    xbval.style.top = '161px';
+    xbval.style.left = '540px';
+
+    const xcval = document.getElementById('xcval');
+    xcval.style.position = 'absolute';
+    xcval.style.top = '181px';
+    xcval.style.left = '540px';
+
+    // Define a threshold velocity for the reaction.
+    let thresholdVelocity = 250; // Adjust this value as needed.
+    let relativeVelocity = 0;
+    let makeOneMoleculeC = false;
+    let makeTwoMoleculeC = false;
+
+    function setup() {
+      // Create particles for legend//view (legend)
+      //SO2
+      let Acircle = createDiv();
+      Acircle.style('background-color', 'red');
+      Acircle.style('border-radius', '50%');
+      Acircle.style('height', '10px');
+      Acircle.style('width', '10px');
+      Acircle.style('position', 'absolute');
+      Acircle.style('top', '140px');
+      Acircle.style('left', 400 + 'px');
+
+      //O2
+      let Bcircle = createDiv();
+      Bcircle.style('background-color', 'blue');
+      Bcircle.style('border-radius', '50%');
+      Bcircle.style('height', '10px');
+      Bcircle.style('width', '10px');
+      Bcircle.style('position', 'absolute');
+      Bcircle.style('top', '160px');
+      Bcircle.style('left', 400 + 'px');
+
+      //SO3
+      let Ccircle = createDiv();
+      Ccircle.style('background-color', 'lime');
+      Ccircle.style('border-radius', '50%');
+      Ccircle.style('height', '10px');
+      Ccircle.style('width', '10px');
+      Ccircle.style('position', 'absolute');
+      Ccircle.style('top', '180px');
+      Ccircle.style('left', 400 + 'px');
+
+      //Label particles
+      //p in html means paragraph tag
+      //SO2 label
+      let SO2Label = createElement('p', 'A');
+      SO2Label.position(420, 120);
+      //O2 label
+      let O2Label = createElement('p', 'B');
+      O2Label.position(420, 140);
+      //SO3label
+      let SO3Label = createElement('p', 'C');
+      SO3Label.position(420, 160);
+
+      //Lable mole fractions
+      let nTtext = createElement('p', 'nT = ');
+      nTtext.position(500, 120);
+
+      let xatext = createElement('p', 'xA = ');
+      xatext.position(500, 140);
+
+      let xbtext = createElement('p', 'xB =' );
+      xbtext.position(500,160);
+
+      let xctext = createElement('p', 'xC =');
+      xctext.position(500, 180);
+      
+      let cnv = createCanvas(400, 400);
+      cnv.position(10, 270);
+      createMolecules();
+      updateUI();
+      select('#so2Slider').input(updateSO2Count);
+      select('#o2Slider').input(updateO2Count);
+      select('#resetButton').mousePressed(resetSimulation);
+    }
+
+    function updateTimer() {
+      // Calculate the time elapsed since the start of the simulation.
+      if (startTime !== 0) {
+        const currentTime = millis();
+        timer = (currentTime - startTime) / 1000; // Convert to seconds
+      }
+    }
+
+    function createMolecules() {
+      let minDistanceFromWall = 2;
+      molecules = [];
+      for (let i = 0; i < so2Count; i++) {
+        molecules.push({ x: random(minDistanceFromWall, width - minDistanceFromWall), y: random(minDistanceFromWall, height - minDistanceFromWall), type: 'A', vx: random(-1, 1), vy: random(-1, 1) });
+      }
+      for (let i = 0; i < o2Count; i++) {
+        molecules.push({ x: random(minDistanceFromWall, width - minDistanceFromWall), y: random(minDistanceFromWall, height - minDistanceFromWall), type: 'B', vx: random(-1, 1), vy: random(-1, 1) });
+      }
+    }
+
+    function updateSO2Count() {
+      so2Count = parseInt(select('#so2Slider').value());
+      updateUI();
+    }
+
+    function updateO2Count() {
+      o2Count = parseInt(select('#o2Slider').value());
+      updateUI();
+    }
+const particles = [],
+  num_particles = 8,
+  modes = ["circle"];
+
+let mode = modes[0]; // update to change collision type
+
+function setup() {
+  createCanvas(400, 400);
+
+  // instantiate particles
+  for (let i = 0; i < num_particles; i++) {
+    particles[i] = new Particle(random(16, 64), i);
+  }
+}
+
+function draw() {
+  background("#eeffee");
+
+  // render particles
+  for (let i = 0; i < particles.length; i++) {
+    particles[i].render();
+  }
+}
+
+class Particle {
+  constructor(diam, id) {
+    this.diam = diam; // diameter
+    this.r = this.diam / 2; // radius
+    this.res = {
+      w: this.diam,
+      h: this.diam,
+    };
+    this.id = id; // instance id
+
+    this.pos = createVector(
+      random(this.diam, width - this.diam),
+      random(this.diam, height - this.diam)
+    ); // position
+    this.vel = createVector(random(0.2, 1), random(0.2, 1)); // velocity
+    this.acc = createVector(); // acceleration
+
+    this.col = "#00a1cf"; // default color
+
+    rectMode(CENTER);
+  }
+
+  // apply motion
+  update() {
+    this.vel.add(this.acc);
+    this.pos.add(this.vel);
+
+    return this;
+  }
+
+  // keep on canvas
+  bounds() {
+    if (this.pos.x <= this.r || this.pos.x >= width - this.r) this.vel.x *= -1;
+    if (this.pos.y <= this.r || this.pos.y >= height - this.r) this.vel.y *= -1;
+
+    return this;
+  }
+
+  checkCollision() {
+    switch (mode) {
+      case "circle":
+        this.circleCircleCollision();
+
+        break;
+
+    }
+    return this;
+  }
+
+  // circle-circle collision detection
+  circleCircleCollision() {
+    // check collision with others
+    for (let i = 0; i < particles.length; i++) {
+      let d = dist(
+        this.pos.x,
+        this.pos.y,
+        particles[i].pos.x,
+        particles[i].pos.y
+      );
+
+      // check dist from every other instance - don't check self
+      if (d <= this.r + particles[i].r && this.id != particles[i].id) {
+        this.col = "#cfa100";
+        break; // break out of the loop when true
+      } else {
+        this.col = "#00a1cf";
+      }
+    }
+  }
+
+  // rect-rect collision detection
+  // only works with rectMode(CENTER)
+  rectRectCollision() {
+    // check collision with others
+    for (let i = 0; i < particles.length; i++) {
+      if (
+        this.pos.x - this.res.w / 2 <
+          particles[i].pos.x + particles[i].res.w / 2 &&
+        this.pos.x + this.res.w / 2 >
+          particles[i].pos.x - particles[i].res.w / 2 &&
+        this.pos.y - this.res.h / 2 <
+          particles[i].pos.y + particles[i].res.h / 2 &&
+        this.pos.y + this.res.h / 2 >
+          particles[i].pos.y - particles[i].res.h / 2 &&
+        this.id != particles[i].id
+      ) {
+        this.col = "#cfa100";
+        break; // break out of the loop when true
+      } else {
+        this.col = "#00a1cf";
+      }
+    }
+  }
+
+  display() {
+    stroke("#13172133");
+    fill(this.col);
+
+    switch (mode) {
+      case "circle":
+        ellipse(this.pos.x, this.pos.y, this.diam);
+        break;
+
+      case "rect":
+        rect(this.pos.x, this.pos.y, this.res.w, this.res.h);
+        break;
+    }
+
+    // drawing this instances id
+    push();
+    textAlign(CENTER, CENTER);
+    textSize(this.r);
+    noStroke();
+    fill("#131721");
+    text(this.id, this.pos.x, this.pos.y);
+    pop();
+
+    return this;
+  }
+
+  // render methods
+  render() {
+    this.update().bounds().checkCollision().display();
+  }
+}
+    }
+
+    // Check which checkbox is selected
+    const checkbox1 = document.getElementById('rxn_1');
+    checkbox1.addEventListener('change', function () {
+      alert(this.checked);
+      makeOneMoleculeC = this.checked;
+    });
+
+    const checkbox2 = document.getElementById('rxn_2');
+    alert(checkbox2.checked);
+    checkbox2.addEventListener('change', function () {
+      alert(this.checked);
+      makeTwoMoleculeC = this.checked; //this makes it true, then it calls the build molecule C function
+    });
+
+    // Add molecule C based on which checkbox
+    function buildOneMoleculeC(i, j) {
+      console.log("buildMoleculeC called. i=" + i + ", j=" + j);
+      console.log("molecule i="+i);
+      console.log("molecule j="+j);
+      const reactant1X = molecules[i].x;
+      const reactant1Y = molecules[i].y;
+      const reactant2X = molecules[j].x;
+      const reactant2Y = molecules[j].y;
+      // Add a new C molecule to the array at the average position.
+      const newX1 = (reactant1X + reactant2X) / 2;
+      const newY1 = (reactant1Y + reactant2Y) / 2;
+      molecules.push({ x: newX1, y: newY1, type: 'C', vx: random(-1, 1), vy: random(-1, 1) });
+      // Increment the so3Count.
+      so3Count1++;
+    }
+
+    function buildTwoMoleculeC(i, j) {
+      console.log("buildMoleculeC called. i=" + i + ", j=" + j);
+      console.log("molecule i="+i);
+      console.log("molecule j="+j);
+      const reactant1X = molecules[i].x;
+      const reactant1Y = molecules[i].y;
+      const reactant2X = molecules[j].x;
+      const reactant2Y = molecules[j].y;
+      // Add two new C molecules to the array at each position.
+      const newX1 = reactant1X;
+      const newY1 = reactant1Y;
+      molecules.push({ x: newX1, y: newY1, type: 'C', vx: random(-1, 1), vy: random(-1, 1) });
+      const newX2 = reactant2X;
+      const newY2 = reactant2Y;
+      molecules.push({ x: newX2, y: newY2, type: 'C', vx: random(-1, 1), vy: random(-1, 1) });
+      // Increment the so3Count.
+      so3Count1 = so3Count1 + 2;
+    }
+
+    function resetSimulation() {
+      so2Count = parseInt(select('#so2Slider').value());
+      o2Count = parseInt(select('#o2Slider').value());
+      so3Count = 0;
+      so2Count1 = so2Count;
+      o2Count1 = o2Count;
+      so3Count1 = so3Count;
+      createMolecules();
+      updateUI();
+      startTime = millis(); // Start the timer when reset is clicked.
+      timer = 0; // Reset the timer.
+    }
+
+
+    function calcMoleFractions(){
+      let nT = so2Count1 + o2Count1 + so3Count1;
+      document.getElementById('nTval').innerText = nT.toString();
+
+      let xa = (so2Count1/nT).toFixed(2);
+      document.getElementById('xaval').innerText = xa.toString();
+
+      let xb = (o2Count1/nT).toFixed(2);
+      document.getElementById('xbval').innerText = xb.toString();
+
+      let xc = (so3Count1/nT).toFixed(2);
+      document.getElementById('xcval').innerText = xc.toString();
+
+    }
+
+    function updateUI() {
+      select('#so2Count').html(so2Count);
+      select('#o2Count').html(o2Count);
+    }
+
+    function drawMolecules() {
+      for (let molecule of molecules) {
+        //console.log(molecule);
+
+        if (molecule.type === 'A') {
+          fill(255, 0, 0); // Red for A
+          ellipse(molecule.x, molecule.y, 10, 10);
+        } else if (molecule.type === 'B') {
+          fill(0, 0, 255); // Blue for B
+          ellipse(molecule.x, molecule.y, 10, 10);
+        } else if (molecule.type === 'C') {
+          fill(0, 255, 0); // Green for C
+          ellipse(molecule.x, molecule.y, 12, 12);
+        }
+      }
+    }
+
+    function displayMoleculeCounts() {
+      textSize(16);
+      //// Calculate the lengths of the bars based on molecule counts.
+      const maxCount = max(so2Count1, o2Count1, so3Count1);
+      const aBarLength = map(so2Count1, 0, maxCount, 0, 100);
+      const bBarLength = map(o2Count1, 0, maxCount, 0, 100);
+      const cBarLength = map(so3Count1, 0, maxCount, 0, 100);
+      //// Draw the rectangular bars with matching colors.
+      noStroke();
+      fill(255, 0, 0); // Red for A
+      rect(10, 20, aBarLength, 7);
+      fill(0, 0, 255); // Blue for B
+      rect(10, 40, bBarLength, 7);
+      fill(0, 255, 0); // Green for C
+      rect(10, 60, cBarLength, 7);
+      // Display text labels.
+      fill(0);
+      text(`A Count: ${so2Count1}`, 120, 30);
+      text(`B Count: ${o2Count1}`, 120, 50);
+      text(`C Count: ${so3Count1}`, 120, 70);
+      text(`Time Elapsed: ${timer.toFixed(1)} seconds`, 10, 90);
+    }
+
+    function draw() {
+      background(230);
+      moveMolecules();
+      drawMolecules();
+      checkCollisions();
+      displayMoleculeCounts(); // Added to display molecule counts
+      updateTimer();
+      console.log("makeMoleculeC=" + makeOneMoleculeC)//checking value
+      updateUI();
+      calcMoleFractions(); // Added to calulate mole fractions
+    }
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>VLE-RL</title>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.dom.js"></script>
+</head>
+<body>
+	<h2>Raoult's Law Vapor-Liquid Equilibrium</h2>
+		<div id="slider-container"></div>
+	<div id="ratio-container"></div>
+	<script>
+		
+		//Model
+		let particlesV = [];
+		let particlesL = [];
+		let T = 100; //Initialize T, tempslider value
+		let vP1, vP2, bp, dp;
+		let PercentP=500; //Initialize PercentP, pressure slider value
+		let P, x1, x2, y1, y2;
+		let z1,z2;
+		let N = 300;
+		let fractionVapor, fractionLiquid, NB, NT, nB, nT; 
+		let totalMoles, molesLiquid, molesVapor;
+		let nBLiquid, nTLiquid, nBVapor, nTVapor;
+		
+		//View
+		let t = 10;
+		let X2=180;//Toxic gas slider x-coordinate
+		let xcanvasorigin = 50;let ycanvasorigin = 150;
+		let FreezeButton;
+		let Freezetext='Freeze';
+		let buttonX = 230;
+		let buttonY = 550;
+		let buttonWidth = 80;
+		let buttonHeight = 25;
+		var graphx = 750;
+		//control
+		var toggle = true;
+		var xvalue = [];	
+		var bpvalue = []; 
+		var yvalue =[];
+		var dpvalue = []; 
+		var widthtemp = 400;
+		var heighttemp = 400;	
+
+function setup() {
+  
+  //View 
+  let cnv = createCanvas(1100, 400);
+  cnv.position(50, 150);
+  equations();
+
+  let PSlider = createSlider(500, 1300, 500);
+  PSlider.position(X2, 90);
+
+  FreezeButton = createButton('Freeze');
+  FreezeButton.position(buttonX, buttonY);
+  // create labels and counts
+  let TLabel = createElement('p', ' Temperature: ');
+  TLabel.position(40, 50);
+  let TLabelUnit = createElement('p', ' °C');
+  TLabelUnit.position(315, 50);
+  let PLabel = createElement('p', 'Pressure: ');
+  PLabel.position(40, 70);
+  let PLabelUnit = createElement('p', ' mm Hg');
+  PLabelUnit.position(385, 77);
+  let z1Label = createElement('p', 'zBlue');
+  z1Label.position(40, 100);
+  let NLabel = createElement('p', 'Number:');
+  NLabel.position(280, 100);
+  
+  let LabelNumberV = createElement('p', 'Number');
+  LabelNumberV.position(490, 180);
+  let labelCompositionV = createElement('p', 'yi ');
+  labelCompositionV.position(560, 180);
+  let labelVPV = createElement('p', 'yi*P(mm Hg): ');
+  labelVPV.position(700, 180);
+  let labelVP = createElement('p', 'Vapor Pressure: ');
+  labelVP.position(370, 50);
+  let labelVP1 = createElement('p', 'mm Hg ');
+  labelVP1.position(550, 50);
+  let labelVP2 = createElement('p', 'mm Hg ');
+  labelVP2.position(670, 50);
+  let labelPPL = createElement('p', 'xi*(VP)i ');
+  labelPPL.position(700, 380);
+  
+  let LabelNumberL = createElement('p', 'Number');
+  LabelNumberL.position(490, 380);
+  let labelCompositionL = createElement('p', 'xi ');
+  labelCompositionL.position(560, 380);
+  //View values 
+  let Tvalue = createElement('span', T);//Tvalue is actually T
+  Tvalue.position(290, 65);
+  let VP1value = createElement('span', vP1.toFixed(1));//Tvalue is actually T
+  VP1value.position(495, 65);
+  let VP2value = createElement('span', vP2.toFixed(1));//Tvalue is actually T
+  VP2value.position(630, 65);
+  let Pvalue = createElement('span', P.toFixed(2));//Coount is PercentP
+  Pvalue.position(320, 90);
+  let z1Value = createElement('span', z1.toFixed(2));
+  z1Value.position(230, 115);
+  let y1value = createElement('span', '');
+  y1value.position(560, 220);
+  let y2value = createElement('span', '');
+  y2value.position(560, 240);
+  let pbar1value = createElement('span', '');
+  pbar1value.position(700, 220);
+  pbar1value.style('color', 'blue');
+  let pbar2value = createElement('span', '');
+  pbar2value.position(700, 240);
+  pbar2value.style('color', 'red');
+  
+  let x1value = createElement('span', '');
+  x1value.position(560, 420);
+  let x2value = createElement('span', '');
+  x2value.position(560, 440);
+  let x1VP1value = createElement('span', '');
+  x1VP1value.position(700, 420);
+  x1VP1value.style('color', 'blue');
+  let x2VP2value = createElement('span', '');
+  x2VP2value.position(700, 440);
+  x2VP2value.style('color', 'red');
+  
+  let nBVaporvalue = createElement('span', '');
+  nBVaporvalue.position(500, 220);
+  let nTVaporvalue = createElement('span', '');
+  nTVaporvalue.position(500, 240);
+  let nBLiquidvalue = createElement('span', '');
+  nBLiquidvalue.position(500, 420);
+  let nTLiquidvalue = createElement('span', '');
+  nTLiquidvalue.position(500, 440);
+  let NBvalue = createElement('span', '');
+  NBvalue.position(370, 115);
+  let NTvalue = createElement('span', '');
+  NTvalue.position(440, 115);
+
+	//status rect beside canvas 
+	let statusRectV = createDiv();
+	statusRectV.style('height', '20px');
+	statusRectV.style('width', '20px');
+	statusRectV.style('position', 'absolute');
+	statusRectV.style('top', '170px');
+	statusRectV.style('left', '460px');
+	statusRectV.style('background-color', 'rgb(255, 200, 200)');
+	let statusRect = createDiv();
+	statusRect.style('height', '20px');
+	statusRect.style('width', '20px');
+	statusRect.style('position', 'absolute');
+	statusRect.style('top', '370px');
+	statusRect.style('left', '460px');
+	statusRect.style('background-color', 'rgb(200, 200, 200)');
+	let phaseValueV = createSpan('Vapor');
+	phaseValueV.id('air-qualityV');
+	phaseValueV.position(480, 170);
+	phaseValueV.style('color', 'rgb(255, 200, 200)');
+	let phaseValueL = createSpan('Liquid');
+	phaseValueL.id('air-quality');
+	phaseValueL.position(480, 370);
+	phaseValueL.style('color', 'rgb(200, 200, 200)');
+
+  // Draw particle in front of T slider
+  let airCircleVP = createDiv();
+  airCircleVP.style('background-color', 'blue');
+  airCircleVP.style('border-radius', '50%');
+  airCircleVP.style('height', '10px');
+  airCircleVP.style('width', '10px');
+  airCircleVP.style('position', 'absolute');
+  airCircleVP.style('top', '70px');
+  airCircleVP.style('left', 480 + 'px');
+
+  let coCircleVP = createDiv();
+  coCircleVP.style('background-color', 'red');
+  coCircleVP.style('border-radius', '50%');
+  coCircleVP.style('height', '10px');
+  coCircleVP.style('width', '10px');
+  coCircleVP.style('position', 'absolute');
+  coCircleVP.style('top', '70px');
+  coCircleVP.style('left', 610 + 'px');
+  // Draw particle in front of N
+  let airCircleN = createDiv();
+  airCircleN.style('background-color', 'blue');
+  airCircleN.style('border-radius', '50%');
+  airCircleN.style('height', '10px');
+  airCircleN.style('width', '10px');
+  airCircleN.style('position', 'absolute');
+  airCircleN.style('top', '120px');
+  airCircleN.style('left', 350 + 'px');
+
+  let coCircleN = createDiv();
+  coCircleN.style('background-color', 'red');
+  coCircleN.style('border-radius', '50%');
+  coCircleN.style('height', '10px');
+  coCircleN.style('width', '10px');
+  coCircleN.style('position', 'absolute');
+  coCircleN.style('top', '120px');
+  coCircleN.style('left', 420 + 'px');
+  // Draw particle for vapor phase 
+  let airCircle = createDiv();
+  airCircle.style('background-color', 'blue');
+  airCircle.style('border-radius', '50%');
+  airCircle.style('height', '10px');
+  airCircle.style('width', '10px');
+  airCircle.style('position', 'absolute');
+  airCircle.style('top', '220px');
+  airCircle.style('left', 470 + 'px');
+
+  let coCircle = createDiv();
+  coCircle.style('background-color', 'red');
+  coCircle.style('border-radius', '50%');
+  coCircle.style('height', '10px');
+  coCircle.style('width', '10px');
+  coCircle.style('position', 'absolute');
+  coCircle.style('top', '240px');
+  coCircle.style('left', 470 + 'px');
+   // Draw particle for liquid phase
+  let airCircleL = createDiv();
+  airCircleL.style('background-color', 'blue');
+  airCircleL.style('border-radius', '50%');
+  airCircleL.style('height', '10px');
+  airCircleL.style('width', '10px');
+  airCircleL.style('position', 'absolute');
+  airCircleL.style('top', '420px');
+  airCircleL.style('left', 470 + 'px');
+
+  let coCircleL = createDiv();
+  coCircleL.style('background-color', 'red');
+  coCircleL.style('border-radius', '50%');
+  coCircleL.style('height', '10px');
+  coCircleL.style('width', '10px');
+  coCircleL.style('position', 'absolute');
+  coCircleL.style('top', '440px');
+  coCircleL.style('left', 470 + 'px'); 
+
+function updateAirQuality() {
+  let airQualitySpan = select("#air-quality");
+  let ratioCountValue = PercentP /(PercentP + T);
+  if (ratioCountValue > 0.1) {
+    statusRect.style('background-color', '200'); // Add this line to change the color of statusRect to red
+  } else {
+    statusRect.style('background-color', '200'); // Add this line to change the color of statusRect to green
+  }
+}
+  function calcmolefractions(){
+
+	equations();
+	y1value.html(nBVapor + "/("+nBVapor+"+"+nTVapor+")="+y1.toFixed(2));
+	y2value.html(nTVapor + "/("+nBVapor+"+"+nTVapor+")="+y2.toFixed(2));
+	pbar1value.html((y1*P).toFixed(2));
+	pbar2value.html((y2*P).toFixed(2));
+	//x1value.html(x1.toFixed(2));
+	x1value.html(nBLiquid + "/("+nBLiquid+"+"+nTLiquid+")="+x1.toFixed(2));
+	x2value.html(nTLiquid + "/("+nBLiquid+"+"+nTLiquid+")="+x2.toFixed(2));
+	x1VP1value.html((x1*vP1).toFixed(2));
+	
+	x2VP2value.html((x2*vP2).toFixed(2));
+	nBVaporvalue.html(nBVapor);
+	nTVaporvalue.html(nTVapor);
+	nBLiquidvalue.html(nBLiquid);
+	nTLiquidvalue.html(nTLiquid);
+	NBvalue.html(NB);
+	NTvalue.html(NT);
+	}
+
+
+  PSlider.input(function() {
+    PercentP = PSlider.value();
+	equations();
+    updateParticles();
+	calcmolefractions();
+	Pvalue.html(P.toFixed(3));
+	z1Value.html(z1.toFixed(3));
+	y1value.html(nBVapor + "/("+nBVapor+"+"+nTVapor+")="+y1.toFixed(2));
+	y2value.html(nTVapor + "/("+nBVapor+"+"+nTVapor+")="+y2.toFixed(2));
+	x1value.html(nBLiquid + "/("+nBLiquid+"+"+nTLiquid+")="+x1.toFixed(2));
+	x2value.html(nTLiquid + "/("+nBLiquid+"+"+nTLiquid+")="+x2.toFixed(2));
+
+  });
+  
+  updateParticles();
+  calcmolefractions();
+
+  		  <!-- let showHelpButton = createButton('Help'); -->
+		  <!-- showHelpButton.position(50, 550); -->
+		  <!-- showHelpButton.mousePressed(showInstructions); -->
+
+		  <!-- let hideHelpButton = createButton('Hide Help'); -->
+		  <!-- hideHelpButton.position(110, 550); -->
+		  <!-- hideHelpButton.mousePressed(hideInstructions); -->
+		  <!-- instructions = createDiv(''); -->
+
+for (var i = 0; i <= 200; i++) {
+  xvalue[i] = i / 200;
+  yvalue[i] = i / 200;
+  bpvalue[i] = (i / 200) * vP1 + (1 - i / 200) * vP2;
+  dpvalue[i] = 1/((i / 200)/ vP1 + (1 - i / 200)/vP2);
+
+}
+
+}
+
+function equations(){
+    vP1 = Math.pow(10, 6.89272 - (1203.531 / (T + 219.888)));//mm Hg, T in deg C, range 14.5 to 80.9C
+    vP2 = Math.pow(10, 6.95805 - (1346.773 / (T + 219.693)));//mm Hg, T in deg C, range 35.3 to 111.5
+	P = PercentP;
+	z1=0.5;
+	z2 = 1- z1;
+	bp= vP1*z1 + vP2*(1-z1);
+	dp= 1/(z1/ vP1 + (1 - z1)/vP2);
+
+	if (P > bp) {
+	x1 = z1;
+	x2 = z2;
+	y1 = 0;
+	y2 = 0;
+	fractionVapor = 0; 
+	fractionLiquid = 1 - fractionVapor;
+	NB = Math.round (N*z1);
+	NT = N - NB;
+	nB = NB;
+	nT = NT;
+    totalMoles = nB + nT; //500
+    molesVapor = 0;
+	molesLiquid = totalMoles; 
+	nBLiquid = nB;
+	nTLiquid = nT;
+	nBVapor = 0;
+	nTVapor = 0;}
+	if (P < dp) {
+	x1 = 0;
+	x2 = 0;
+	y1 = z1;
+	y2 = z2;
+	fractionVapor = 1; 
+	fractionLiquid = 1 - fractionVapor;
+	NB = Math.round (N*z1);
+	NT = N - NB;
+	nB = NB;
+	nT = NT;
+    totalMoles = nB + nT; //500
+    molesVapor = fractionVapor* totalMoles;
+	molesLiquid = fractionLiquid * totalMoles; 
+	nBLiquid = 0;
+	nTLiquid = 0;
+	nBVapor = nB;
+	nTVapor = nT;
+	
+	}
+	if (P>dp && P<bp){
+	var K1 = vP1/P;
+	var K2 = vP2/P;
+	x1 = (1 - K2) / (K1 - K2);
+	x2 = 1- x1;
+	y1 = K1*x1;
+	y2 = K2*x2;
+	fractionVapor = ( 1 - z1*(K1-K2)/(1-K2))/(1 - K1); 
+	fractionLiquid = 1 - fractionVapor;
+	NB = Math.round (N*z1);
+	NT = N - NB;
+	nB = NB;
+	nT = NT;
+    totalMoles = nB + nT; //500
+    molesVapor = fractionVapor* totalMoles;
+	molesLiquid = fractionLiquid * totalMoles; 
+	nBLiquid = Math.round(molesLiquid * x1);
+	nTLiquid = Math.round(molesLiquid * x2);
+	nBVapor = Math.round(molesVapor * y1);
+	nTVapor = Math.round(molesVapor * y2);}
+	if (P==dp || P==bp){
+	var K1 = vP1/P;
+	var K2 = vP2/P;
+	x1 = (1 - K2) / (K1 - K2);
+	x2 = 1- x1;
+	y1 = K1*x1;
+	y2 = K2*x2;
+	fractionVapor = ( 1 - z1*(K1-K2)/(1-K2))/(1 - K1); 
+	fractionLiquid = 1 - fractionVapor;
+	NB = Math.round (N*z1);
+	NT = N - NB;
+	nB = NB;
+	nT = NT;
+    totalMoles = nB + nT; //500
+    molesVapor = fractionVapor* totalMoles;
+	molesLiquid = fractionLiquid * totalMoles; 
+	nBLiquid = Math.round(molesLiquid * x1);
+	nTLiquid = Math.round(molesLiquid * x2);
+	nBVapor = Math.round(molesVapor * y1);
+	nTVapor = Math.round(molesVapor * y2);}
+
+	}
+
+		function updateParticles() {
+			particlesV = [];particlesL = [];
+			//Vapor phase
+			for (let i = 0; i < nBVapor; i++) {
+				particlesV.push(new ParticleV(random(t, widthtemp-t), random(t,heighttemp/2-t), color(0, 0, 255)));
+			}
+			for (let i = 0; i < nTVapor; i++) {
+				particlesV.push(new ParticleV(random(t,widthtemp-t), random(t,heighttemp/2-t), color(255, 0, 0)));
+			}
+			//Liquid phase
+			for (let i = 0; i < nBLiquid; i++) {
+				particlesL.push(new ParticleL(random(t, widthtemp-t), random(heighttemp/2,heighttemp-t), color(0, 0, 255)));
+			}
+			for (let i = 0; i < nTLiquid; i++) {
+				particlesL.push(new ParticleL(random(t,widthtemp-t), random(heighttemp/2,heighttemp-t), color(255, 0, 0)));
+			}
+		}
+
+function moves(){
+	  for (let i = 0; i < particlesV.length; i++) {
+		particlesV[i].move();
+		
+	  }
+	  	for (let i = 0; i < particlesL.length; i++) {
+		particlesL[i].move();
+		
+	  }
+}
+function displays(){
+	  for (let i = 0; i < particlesV.length; i++) {
+		particlesV[i].display();
+		
+	  }
+	  	for (let i = 0; i < particlesL.length; i++) {
+		particlesL[i].display();
+		
+	  }
+}
+	
+
+	
+	function draw() {
+	  
+	  background(255);
+	   
+	  fill(255, 200, 200);
+	  rect(t, t, widthtemp-2*t, heighttemp-2*t);
+	  rect(100, 150+heighttemp, 50, 20);
+		
+	  push();
+		stroke(150);
+		line (t,heighttemp/2,widthtemp-t,heighttemp/2);
+		stroke(50);
+	  	rect(graphx, 160,200,200);  
+		push();
+		stroke(0);strokeWeight(0.1); fill(0);
+		circle (graphx+200*yvalue[100], 380-200*P/vP1, 5);
+
+		text ('Liquid',graphx+200*yvalue[100], 380-200*1400/vP1, 5);
+		text ('Vapor',graphx+200*yvalue[100], 380-200*400/vP1, 5);
+		textAlign(CENTER);text ('Mole_fraction_component1_(blue)',graphx+200*yvalue[100], 380-200*30/vP1, 5);
+		textAlign(CENTER);text ('P',graphx-20, 380-200*800/vP1, 5);
+		text ('0',graphx, 380-200*100/vP1, 5);
+				text ('0.5',graphx+100, 380-200*100/vP1, 5);
+		text ('1',graphx+200, 380-200*100/vP1, 5);
+		//y-axis label
+				text ('0',graphx, 380-200*100/vP1, 5);
+				text ('0.5',graphx+100, 380-200*100/vP1, 5);
+		text ('1',graphx+200, 380-200*100/vP1,5);
+		strokeWeight(0.5);
+		for (var i=0; i<=200; i=i+20){
+		line(graphx+200*xvalue[i],360,graphx+200*xvalue[i],355);
+		//point(graphx+200*yvalue[i],380-200*dpvalue[i]/vP1);
+		}
+		for (var i=0; i<=200; i=i+20){
+		line(graphx,360-i, graphx+5, 360-i);
+		//point(graphx+200*yvalue[i],380-200*dpvalue[i]/vP1);
+		}
+		pop();
+		beginShape();
+		for (var i=0; i<=200; i++){
+		point(graphx+200*xvalue[i],380-200*bpvalue[i]/vP1);
+		point(graphx+200*yvalue[i],380-200*dpvalue[i]/vP1);
+		}
+
+		endShape();
+		
+		stroke(150);
+		fill(200);
+		rect(t, heighttemp/2, widthtemp-t-t, heighttemp/2);
+	  
+		//draw the button
+	    fill(255);
+		rect(20, 20, buttonWidth, buttonHeight);
+		rect(20, 220, buttonWidth, buttonHeight);
+		textSize(12);
+		textAlign(CENTER, CENTER);
+		fill(0);text("Vapour", 20 + buttonWidth / 2, 20 + buttonHeight / 2);
+		text("Liquid", 20 + buttonWidth / 2, 220 + buttonHeight / 2);
+	  pop();
+	  
+ 
+	  	if ((mouseIsPressed === true) && (mouseX>buttonX-50 && mouseX<buttonX+buttonWidth-50 && mouseY>buttonY-150 && mouseY<buttonY-150+buttonHeight)) {
+	    toggle = !toggle;
+			if (toggle) {
+			 Freezetext = 'Freeze';
+			 } else {
+			 Freezetext = 'Unfreeze';
+			 }
+			 FreezeButton.html(Freezetext); // update button text
+        }
+
+	    if ( toggle == true ) {
+			 displays();moves();
+			 } else {
+			 displays();Freezetext='Unfreeze';
+	    }
+	  
+	  
+
+	}
+
+
+
+		function ParticleV(x, y, color) {
+		  this.x = x;
+		  this.y = y;
+		  this.color = color;
+		  this.vx = random(-1, 1);
+		  this.vy = random(-1, 1);
+		  this.speed = random(1, 3);
+
+		  this.move = function() {
+			this.x += this.vx * this.speed;
+			this.y += this.vy * this.speed;
+			if (this.x < t || this.x > (widthtemp-t)) {
+			  this.vx = -this.vx;
+			}
+			if (this.y < t || this.y > (heighttemp/2-t)) {
+			  this.vy = -this.vy;
+			}
+		  };
+
+		  this.display = function() {
+			noStroke();
+			fill(this.color);
+			circle(this.x, this.y, 7);
+		  };
+		}
+		function ParticleL(x, y, color) {
+		  this.x = x;
+		  this.y = y;
+		  this.color = color;
+		  this.vx = random(-1, 1);
+		  this.vy = random(-1, 1);
+		  this.speed = random(1, 6);
+
+		  this.move = function() {
+			this.x += this.vx * this.speed;
+			this.y += this.vy * this.speed;
+			if (this.x < t || this.x > (widthtemp-t)) {
+			  this.vx = -this.vx;
+			}
+			if (this.y < heighttemp/2 || this.y > (heighttemp-t)) {
+			  this.vy = -this.vy;
+			}
+		  };
+
+		  this.display = function() {
+			noStroke();
+			fill(this.color);
+			circle(this.x, this.y, 6);
+		  };
+		}
+function showInstructions() {
+  // Create a new div element and add the instructions to it
+    let ins="Welcome to the Raoult's Law Simulation.<br>" 
+                     +'<span style="font-weight: bold; color: blue;">Instructions:</span><br>' 
+                     +'(1) Set the values of T, P, z1 using the sliders' 
+                     +'<br><span style="font-weight: bold; color: blue;">Concept Illustrated:</span><br> Observe that partial pressure of a component in the vapor phase = Its mole fraction in liquid times its vapor pressure'
+					 //+'<br><span style="font-weight: bold; color: blue;">Simulation support:</span><br> Click on the slider and use mouse or right/left key on the keybord to increse/decrease value.'
+					 //+'<br>Click and hold Freeze button to freeze motoin to count molecules if you wish.';
+					 //+'<br> ';
+					 				 
+  instructionsDiv = createDiv(ins);
+  instructionsDiv.position(480, 470);
+}
+
+function hideInstructions() {
+  // Remove the instructions div element from the page
+  instructionsDiv.remove();
+}
+function showInstructions2() {
+  // Create a new div element and add the instructions to it
+    let ins2='<br><span style="font-weight: bold; color: blue;">Implementation tips (Note to the instructors):</span><br>'+
+	'This simulation is designed to help student develop a sense of the abstrct concept of composition of a homogeneous mixture. This may be implemented as a play. Encourage and allow students to free play.'+
+	' Let them record their observations, listen to their ideas, direct conversation to the concept of composition. The use algebra to introduce terms such as mass or mole fractions etc. Help them see that stoichiometric sum is 1.'+
+	' Ref: (1) Hensberry, K. K. R., Whitacre, I., Findley, K., Schellinger, J., & Burr, M., Mathematics Teaching in the Middle School, 24(3), 197-183, 2018';
+					 ;
+  instructionsDiv2 = createDiv(ins2);
+  instructionsDiv2.position(550, 380);
+}
+
+function hideInstructions2() {
+  // Remove the instructions div element from the page
+  instructionsDiv2.remove();
+}
+function showInstructions3() {
+  // Create a new div element and add the instructions to it
+    let ins3= '<br><span style="font-weight: bold; color: black;">Conceptualization and initial design:</span>Course Instructor'+
+			  '<br><span style="font-weight: bold; color: black;">Consultation:</span>A colleague'+
+			  '<br><span style="font-weight: bold; color: black;">Technical Review:</span> A colleague,TI, Active learning expert,etc.'+
+			  '<br><span style="font-weight: bold; color: black;">Coding:</span>An undergrad/grad etc.'+
+			  '<br><span style="font-weight: bold; color: black;">Software Credit:</span>ChatGPT-3, p5js library.'+
+			  '<br><span style="font-weight: bold; color: black;">Funding:</span>SSE, U of C'+
+			  '<br><span style="font-weight: bold; color: black;">Licensing:</span>Open'+
+			  '<br><span style="font-weight: bold; color: black;">Classroom implementation:</span>'+
+			  '<br><span style="font-weight: bold; color: black;">Conference presentation:</span>'+
+			  '<br><span style="font-weight: bold; color: black;">Journal publication:</span>'+
+			  '<br><span style="font-weight: bold; color: black;">Project Supervision:</span> Kazi Sumon';
+  textSize(10);
+  instructionsDiv3 = createDiv(ins3); textSize(14);
+  instructionsDiv3.position(550, 450);
+}
+
+function hideInstructions3() {
+  // Remove the instructions div element from the page
+  instructionsDiv3.remove();
+}
+
+
+	</script>
+</body>
+</html>

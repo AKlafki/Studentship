@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stoichiometry Simulation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+  <h2>Stoichometry Simulation for 2SO₂ + O₂ → 2SO₃</h2>
+  <div>
+    <label for="so2Slider">Number of SO2 molecules:</label>
+    <input type="range" id="so2Slider" min="0" max="50" value="5">
+    <span id="so2Count">5</span>
+  </div>
+  <div>
+    <label for="o2Slider">Number of O2 molecules:</label>
+    <input type="range" id="o2Slider" min="0" max="50" value="5">
+    <span id="o2Count">5</span>
+  </div>
+  <button id="startButton">Start Reaction</button><br>
+  <button id="resetButton">Reset</button>
+
+  <script>
+    // model
+    let so2Count = 20;
+    let o2Count = 5;
+    let so3Count = 0;
+
+    let molecules = [];
+
+    function setup() {
+      //control - what the user sees
+      createCanvas(400, 400);
+      createMolecules();
+      updateUI();
+
+      //control - get value from sliders that users input
+      select('#so2Slider').input(updateSO2Count);
+      select('#o2Slider').input(updateO2Count);
+      select('#startButton').mousePressed(startSimulation);
+      select('#resetButton').mousePressed(resetSimulation);
+
+      // Create particles for legend//view (legend)
+      //SO2
+      let Acircle = createDiv();
+      Acircle.style('background-color', 'red');
+      Acircle.style('border-radius', '50%');
+      Acircle.style('height', '10px');
+      Acircle.style('width', '10px');
+      Acircle.style('position', 'absolute');
+      Acircle.style('top', '80px');
+      Acircle.style('left', 370 + 'px');
+
+      //O2
+      let O2circle = createDiv();
+      O2circle.style('background-color', 'blue');
+      O2circle.style('border-radius', '50%');
+      O2circle.style('height', '10px');
+      O2circle.style('width', '10px');
+      O2circle.style('position', 'absolute');
+      O2circle.style('top', '100px');
+      O2circle.style('left', 370 + 'px');
+
+      //SO3
+      let SO3circle = createDiv();
+      SO3circle.style('background-color', 'lime');
+      SO3circle.style('border-radius', '50%');
+      SO3circle.style('height', '10px');
+      SO3circle.style('width', '10px');
+      SO3circle.style('position', 'absolute');
+      SO3circle.style('top', '120px');
+      SO3circle.style('left', 370 + 'px');
+
+      //Label particles
+      //p in html means paragraph tag
+      //SO2 label
+      let SO2Label = createElement('p', 'SO₂');
+      SO2Label.position(390, 58);
+      //O2 label
+      let O2Label = createElement('p', 'O₂');
+      O2Label.position(390, 78);
+      //SO3label
+      let SO3Label = createElement('p', 'SO₃');
+      SO3Label.position(390, 98);
+    }
+
+    function draw() {
+      //model
+      background(220);
+      drawMolecules();
+    }
+
+    function createMolecules() {
+      // model (get the data to fill molecules array)
+      molecules = [];
+      for (let i = 0; i < so2Count; i++) {
+        molecules.push({ x: random(width), y: random(height), type: 'SO2' });
+      }
+      for (let i = 0; i < o2Count; i++) {
+        molecules.push({ x: random(width), y: random(height), type: 'O2' });
+      }
+    }
+
+    // Control -> user interaction to get number of molecules
+    function updateSO2Count() {
+      so2Count = parseInt(select('#so2Slider').value());
+      updateUI();
+    }
+
+    function updateO2Count() {
+      o2Count = parseInt(select('#o2Slider').value());
+      updateUI();
+    }
+
+	function startSimulation() {
+    // model - how to change how many molecules are on screen and create a reaction
+	  // Loop through the molecules array and look for pairs of SO2 and O2 molecules.
+    //if ((SO2Count>=2) && (O2Count>=1)) {
+	  for (let i = 0; i < molecules.length; i++) {
+		if (molecules[i].type === 'SO2') {
+		  for (let j = 0; j < molecules.length; j++) {
+			if (j !== i && molecules[j].type === 'O2') {
+			  // Found a pair of 2 SO2 and 1 O2 molecules; they will react to form SO3.
+			  
+			  // Remove the reacting molecules from the array.
+			  molecules.splice(i, 1);
+        molecules.splice(i+1,1);
+			  molecules.splice(j - 1, 1);
+			  i--; // Decrement i to account for the removed elements
+			  j--; // Decrement j to account for the removed elements
+			  
+			  // Add new SO3 molecules to the array.
+			  molecules.push({ x: random(width), y: random(height), type: 'SO3' });
+        molecules.push({ x: random(width), y: random(height), type: 'SO3' });
+			  
+			  // Increment the so3Count.
+			  so3Count++;
+			  
+			  // Update the UI to reflect the changes.
+			  updateUI();
+			  
+			  // Exit the loops to handle one reaction at a time.
+			  return;
+			}
+		  }
+		}
+	  }
+	  // If no more reactions are possible, display a message or handle the end of the simulation.
+	}
+
+
+    function resetSimulation() {
+      so2Count = parseInt(select('#so2Slider').value());
+      o2Count = parseInt(select('#o2Slider').value());
+      so3Count = 0;
+      createMolecules();
+      updateUI();
+    }
+
+    function updateUI() {
+      //controller
+      select('#so2Count').html(so2Count);
+      select('#o2Count').html(o2Count);
+    }
+
+    function drawMolecules() {
+      //view
+      for (let molecule of molecules) {
+        if (molecule.type === 'SO2') {
+          fill(255, 0, 0); // Red for SO2
+          ellipse(molecule.x, molecule.y, 20, 20);
+        } else if (molecule.type === 'O2') {
+          fill(0, 0, 255); // Blue for O2
+          ellipse(molecule.x, molecule.y, 20, 20);
+        } else if (molecule.type === 'SO3') {
+          fill(0, 255, 0); // Green for SO3
+          ellipse(molecule.x, molecule.y, 20, 20);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
